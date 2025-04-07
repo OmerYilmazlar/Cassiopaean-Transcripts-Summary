@@ -44,6 +44,7 @@ This project offers an accessible, modern interface for exploring and studying t
 ├── transcripts.json    # All session summaries in structured format
 ├── script.js           # Application logic (search, navigation, rendering)
 └── /assets             # Optional assets (icons, fonts, etc.)
+```
 
 ## 💡 Future Ideas
 
