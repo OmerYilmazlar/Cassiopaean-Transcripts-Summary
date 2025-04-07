@@ -25,7 +25,7 @@ This project offers an accessible, modern interface for exploring and studying t
 
 ## 🚀 Live Demo
 
-[🔗 View the Website](https://yourusername.github.io/your-repo-name)
+[🔗 View the Website](https://omeryilmazlar.github.io/Cassiopaean-Transcripts-Summaries/)
 
 *(replace with your real link after publishing to GitHub Pages)*
 
