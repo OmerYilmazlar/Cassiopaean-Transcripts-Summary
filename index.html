@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Transcript Archive</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Google Font: Playfair Display -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap" />
+
+    <!-- Font Awesome for icons (optional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <style>
+        /* Increase line spacing (approx 30% more) for main content */
+        #main-content * {
+            line-height: 1.8;
+        }
+
+        p {
+            font-size: 18px;
+            font-family: Charter, Georgia, 'Times New Roman', serif;
+        }
+
+        /* h2 headings: use Playfair Display, larger size, and Bootstrap primary color */
+        #main-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            margin-top: 1em;
+            margin-bottom: 0.5em;
+            color: #406294;
+            text-decoration: none;
+            /* remove underline by default */
+        }
+
+        /* For summary headings, remove underline from "Summary of" part */
+        .underlined-part {
+            text-decoration: underline;
+        }
+
+        /* Card styling for snippet search results */
+        .snippet-card {
+            margin-bottom: 1rem;
+            border: 1px solid #e1e1e1;
+        }
+
+        .snippet-card-header {
+            background-color: #cadcee;
+            cursor: pointer;
+            color: #0066ff;
+            text-decoration: underline;
+        }
+
+        .snippet-card-header:hover {
+            color: #709ee3;
+        }
+
+        .snippet-line {
+            border-top: 1px solid #f1f1f1;
+            padding: 1rem 1rem;
+            line-height: 2.2;
+        }
+
+        /* Sidebar adjustments */
+        .accordion-button {
+            background-color: #fff;
+            color: #4a69bd;
+            font-weight: 600;
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: #e9ecef;
+            color: #1e3799;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+
+    <!-- HEADER -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a href="#" class="navbar-brand mb-0 h1" id="site-title">Cassiopaean Transcript Summaries</a>
+        </div>
+    </nav>
+
+    <!-- MAIN LAYOUT -->
+    <div class="container-fluid" style="height: calc(100vh - 56px);">
+        <div class="row h-100">
+            <!-- SIDEBAR (Search + Accordion) -->
+            <div class="col-3 border-end p-3 overflow-auto">
+                <!-- SEARCH BAR -->
+                <div class="input-group mb-3">
+                    <span class="input-group-text" id="search-icon">
+                        <i class="fa fa-search"></i>
+                    </span>
+                    <input type="text" class="form-control" placeholder="Search transcripts..." id="search-input"
+                        aria-label="Search transcripts" aria-describedby="search-icon" />
+                </div>
+                <!-- Accordion for years -->
+                <div class="accordion" id="yearAccordion"></div>
+            </div>
+            <!-- MAIN CONTENT AREA -->
+            <div class="col-9 p-3 overflow-auto" id="main-content">
+                <h2>Welcome to the Cassiopaean Transcript Archive</h2>
+                <p>This archive contains searchable summaries of the Cassiopaean Sessions from 2019 through 2025. The
+                    sessions cover topics including metaphysics, earth changes, geopolitical analysis, health
+                    information, and more.</p>
+                <p>To explore the archive:</p>
+                <ul>
+                    <li>Use the search box to find specific topics across all transcripts</li>
+                    <li>Browse sessions by year in the sidebar navigation</li>
+                    <li>Click any session date to view its complete summary</li>
+                </ul>
+                <p>The contents are organized chronologically with each transcript containing consistent sections for
+                    different topics discussed during the sessions.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        /*******************************************************
+         * 1) Utility: Convert Markdown -> HTML and highlight searchTerm.
+         * Also, process the summary heading to remove underline from "Summary of"
+         *******************************************************/
+        function renderMarkdownWithHighlight(rawMarkdown, searchTerm) {
+            // First parse the markdown to HTML
+            let html = marked.parse(rawMarkdown);
+
+            // Then process the HTML for summary headings
+            html = processSummaryHeading(html);
+
+            // Finally add search highlighting if needed
+            if (searchTerm) {
+                const re = new RegExp(searchTerm, 'gi');
+                html = html.replace(re, match => `<mark>${match}</mark>`);
+            }
+
+            return html;
+        }
+
+        // Process <h2> that starts with "Summary of " to split styles.
+        function processSummaryHeading(html) {
+            // More specific regex to match how marked.js generates headings
+            return html.replace(
+                /(<h2(?:\s+[^>]*)?>)(Summary of\s+)(.+?)(<\/h2>)/gi,
+                (match, h2Open, summaryPart, contentPart, h2Close) => {
+                    return `${h2Open}<span class="no-underline no-link">${summaryPart}</span><span class="underlined-part">${contentPart}</span>${h2Close}`;
+                }
+            );
+        }
+
+        /*******************************************************
+         * 2) Return snippet lines that contain the search term.
+         *******************************************************/
+        function getSnippetLines(rawMarkdown, searchTerm) {
+            const lines = rawMarkdown.split('\n');
+            return lines
+                .filter(line => line.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map(line => {
+                    let lineHTML = marked.parse(line);
+                    return lineHTML.replace(
+                        new RegExp(searchTerm, 'gi'),
+                        match => `<mark>${match}</mark>`
+                    );
+                });
+        }
+
+        /*******************************************************
+         * 3) Show full transcript in the main content area.
+         *******************************************************/
+        function showFullTranscript(transcript, searchTerm) {
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = '';
+
+            // Full transcript content with optional highlighting.
+            const fullHTML = renderMarkdownWithHighlight(transcript.content, searchTerm);
+            const transcriptDiv = document.createElement('div');
+            transcriptDiv.innerHTML = fullHTML;
+            mainContent.appendChild(transcriptDiv);
+
+            // Scroll to the first highlighted match.
+            const firstMark = mainContent.querySelector('mark');
+            if (firstMark) {
+                firstMark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        /*******************************************************
+         * 4) Global snippet-based search handler.
+         *******************************************************/
+        function handleSearch(transcripts, keyword) {
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = '';
+
+            if (!keyword) {
+                mainContent.innerHTML = `<p>Type a keyword to see matching lines or click a transcript date to view its full content.</p>`;
+                return;
+            }
+
+            let totalMatches = 0;
+            transcripts.forEach(transcript => {
+                const snippetLines = getSnippetLines(transcript.content, keyword);
+                if (snippetLines.length > 0) {
+                    totalMatches += snippetLines.length;
+
+                    // Build a snippet card using Bootstrap card component.
+                    const cardDiv = document.createElement('div');
+                    cardDiv.classList.add('card', 'mb-3', 'snippet-card');
+
+                    const cardHeader = document.createElement('div');
+                    cardHeader.classList.add('card-header', 'snippet-card-header');
+                    cardHeader.textContent = transcript.title;
+                    cardHeader.addEventListener('click', () => {
+                        showFullTranscript(transcript, keyword);
+                    });
+                    cardDiv.appendChild(cardHeader);
+
+                    snippetLines.forEach(lineHTML => {
+                        const cardBody = document.createElement('div');
+                        cardBody.classList.add('card-body', 'snippet-line');
+                        cardBody.innerHTML = lineHTML;
+                        cardDiv.appendChild(cardBody);
+                    });
+
+                    mainContent.appendChild(cardDiv);
+                }
+            });
+
+            if (totalMatches === 0) {
+                mainContent.innerHTML = `<p>No matches found for "${keyword}".</p>`;
+            }
+        }
+
+        /*******************************************************
+         * 5) Parse date from transcript title for sorting (month/day).
+         *******************************************************/
+        const monthMap = {
+            january: 1,
+            february: 2,
+            march: 3,
+            april: 4,
+            may: 5,
+            june: 6,
+            july: 7,
+            august: 8,
+            september: 9,
+            october: 10,
+            november: 11,
+            december: 12
+        };
+
+        function parseDateFromTitle(title) {
+            // e.g. "29 July 2023"
+            const parts = title.trim().split(/\s+/);
+            let day = 1;
+            let monthNum = 1;
+            if (parts.length >= 3) {
+                const possibleDay = parseInt(parts[0], 10);
+                if (!isNaN(possibleDay)) {
+                    day = possibleDay;
+                }
+                const possibleMonth = parts[1].toLowerCase();
+                if (monthMap[possibleMonth]) {
+                    monthNum = monthMap[possibleMonth];
+                }
+            }
+            return monthNum * 100 + day;
+        }
+
+        /*******************************************************
+         * 6) Build a Bootstrap Accordion for years.
+         *******************************************************/
+        function buildYearAccordion(groupedByYear, transcripts) {
+            const accordionContainer = document.getElementById('yearAccordion');
+            accordionContainer.innerHTML = '';
+
+            // Sort years in ascending order (oldest first).
+            const sortedYears = Object.keys(groupedByYear).sort((a, b) => {
+                if (a === 'Unknown') return 1;
+                if (b === 'Unknown') return -1;
+                return parseInt(a) - parseInt(b);
+            });
+
+            sortedYears.forEach((year, index) => {
+                // Unique IDs for accordion items.
+                const collapseId = `collapseYear${year}`;
+                const headingId = `headingYear${year}`;
+
+                // Accordion item.
+                const accordionItem = document.createElement('div');
+                accordionItem.classList.add('accordion-item');
+
+                // Accordion header.
+                const header = document.createElement('h2');
+                header.classList.add('accordion-header');
+                header.id = headingId;
+
+                const button = document.createElement('button');
+                button.classList.add('accordion-button', 'collapsed');
+                button.type = 'button';
+                button.setAttribute('data-bs-toggle', 'collapse');
+                button.setAttribute('data-bs-target', `#${collapseId}`);
+                button.setAttribute('aria-expanded', 'false');
+                button.setAttribute('aria-controls', collapseId);
+                button.textContent = year;
+
+                header.appendChild(button);
+                accordionItem.appendChild(header);
+
+                // Accordion collapse (body).
+                const collapseDiv = document.createElement('div');
+                collapseDiv.id = collapseId;
+                collapseDiv.classList.add('accordion-collapse', 'collapse');
+                collapseDiv.setAttribute('aria-labelledby', headingId);
+                collapseDiv.setAttribute('data-bs-parent', '#yearAccordion');
+
+                const bodyDiv = document.createElement('div');
+                bodyDiv.classList.add('accordion-body');
+
+                const ul = document.createElement('ul');
+                ul.classList.add('list-unstyled');
+
+                // Sort transcripts for this year by month/day (ascending)
+                const transcriptsForYear = groupedByYear[year];
+                transcriptsForYear.sort((a, b) => parseDateFromTitle(a.title) - parseDateFromTitle(b.title));
+
+                transcriptsForYear.forEach(t => {
+                    const li = document.createElement('li');
+                    li.classList.add('text-primary', 'fw-semibold', 'mb-1');
+                    li.style.cursor = 'pointer';
+                    li.textContent = t.title;
+                    li.addEventListener('click', () => {
+                        showFullTranscript(t, currentSearchTerm);
+                    });
+                    ul.appendChild(li);
+                });
+
+                bodyDiv.appendChild(ul);
+                collapseDiv.appendChild(bodyDiv);
+                accordionItem.appendChild(collapseDiv);
+                accordionContainer.appendChild(accordionItem);
+            });
+        }
+
+        /*******************************************************
+         * MAIN SCRIPT
+         *******************************************************/
+        let currentSearchTerm = '';
+
+        fetch('transcripts.json')
+            .then(res => res.json())
+            .then(transcripts => {
+                // Group transcripts by year (parse year from title)
+                const groupedByYear = {};
+                transcripts.forEach(t => {
+                    const yearMatch = t.title.match(/\b(\d{4})\b$/);
+                    let year = 'Unknown';
+                    if (yearMatch) {
+                        year = yearMatch[1];
+                    }
+                    if (!groupedByYear[year]) {
+                        groupedByYear[year] = [];
+                    }
+                    groupedByYear[year].push(t);
+                });
+
+                // Build the Bootstrap Accordion for years (ascending order)
+                buildYearAccordion(groupedByYear, transcripts);
+
+                // Handle search input (global search for snippets)
+                const searchInput = document.getElementById('search-input');
+                searchInput.addEventListener('input', function () {
+                    currentSearchTerm = this.value.trim();
+                    handleSearch(transcripts, currentSearchTerm);
+                });
+            })
+            .catch(err => {
+                console.error('Error loading transcripts:', err);
+                document.getElementById('main-content').innerHTML = `<p class="text-danger">Failed to load transcripts.json</p>`;
+            });
+
+        // Reset page to default view when clicking the site title
+        document.getElementById('site-title').addEventListener('click', function (e) {
+            e.preventDefault();
+            const mainContent = document.getElementById('main-content');
+            mainContent.innerHTML = `
+        <h2>Welcome to the Cassiopaean Transcript Archive</h2>
+        <p>This archive contains searchable summaries of the Cassiopaean Sessions from 2019 through 2025. The sessions cover topics including metaphysics, earth changes, geopolitical analysis, health information, and more.</p>
+        <p>To explore the archive:</p>
+        <ul>
+            <li>Use the search box to find specific topics across all transcripts</li>
+            <li>Browse sessions by year in the sidebar navigation</li>
+            <li>Click any session date to view its complete summary</li>
+        </ul>
+        <p>The contents are organized chronologically with each transcript containing consistent sections for different topics discussed during the sessions.</p>
+    `;
+            // Clear search input if there's any
+            document.getElementById('search-input').value = '';
+            currentSearchTerm = '';
+        });
+    </script>
+</body>
+
+</html>
